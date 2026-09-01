@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة المحل</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- شاشة اختيار المستخدم -->
+    <div id="userSelectScreen" class="screen active">
+        <div class="login-container">
+            <h1>🏪 نظام إدارة المحل</h1>
+            <p>اختر المستخدم للبدء</p>
+            
+            <div class="users-buttons">
+                <button class="user-btn" onclick="selectUser('عزوز')">
+                    <span class="user-icon">👤</span>
+                    <span class="user-name">عزوز</span>
+                </button>
+                <button class="user-btn" onclick="selectUser('معتز')">
+                    <span class="user-icon">👤</span>
+                    <span class="user-name">معتز</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- شاشة إدخال PIN -->
+    <div id="pinScreen" class="screen">
+        <div class="pin-container">
+            <h1>🔐 إدخال الرمز الأمني</h1>
+            <p id="pinUserDisplay">المستخدم: </p>
+            
+            <form id="pinForm" onsubmit="verifyPin(event)">
+                <div class="form-group">
+                    <label>الرمز الأمني (PIN):</label>
+                    <input type="password" id="pinInput" placeholder="أدخل رمزك الأمني" required autocomplete="off">
+                </div>
+                <button type="submit" class="submit-btn">دخول</button>
+                <button type="button" class="cancel-btn" onclick="backToUserSelect()">الرجوع</button>
+            </form>
+            <p id="pinError" class="error-msg"></p>
+        </div>
+    </div>
+
+    <!-- شاشة تسجيل الدخول (مخفية - للتوافق) -->
+    <div id="loginScreen" class="screen" style="display:none;">
+    </div>
+
+    <!-- الشاشة الرئيسية -->
+    <div id="mainScreen" class="screen">
+        <header class="header">
+            <div class="header-content">
+                <h1>🏪 المحل</h1>
+                <div class="user-info">
+                    <span id="currentUser" class="user-badge">المستخدم</span>
+                    <button onclick="logout()" class="logout-btn">تسجيل خروج</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- التبويبات -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="sales" onclick="switchTab('sales', event)">
+                📊 تسجيل المبيعات
+            </button>
+            <button class="tab-btn" data-tab="reports" onclick="switchTab('reports', event)">
+                📈 التقارير
+            </button>
+        </div>
+
+        <!-- تبويب تسجيل المبيعات -->
+        <div id="salesTab" class="tab-content active">
+            <div class="sales-container">
+                <h2>تسجيل عملية بيع جديدة</h2>
+                
+                <form id="salesForm" onsubmit="addSale(event)">
+                    <!-- نوع البيع -->
+                    <div class="form-group">
+                        <label>نوع البيع *</label>
+                        <select id="saleType" required onchange="updateServiceType()">
+                            <option value="">اختر النوع</option>
+                            <option value="رصيد">📱 كارتات رصيد</option>
+                            <option value="ببجي">🎮 شدات ببجي</option>
+                            <option value="لودو">🎲 عملات لودو</option>
+                            <option value="اكسسوارات">🎧 اكسسوارات</option>
+                            <option value="صيانة">🔧 خدمات صيانة</option>
+                        </select>
+                    </div>
+
+                    <!-- اسم المادة -->
+                    <div class="form-group">
+                        <label>اسم المادة أو الخدمة *</label>
+                        <input type="text" id="itemName" placeholder="مثال: رصيدة زين 100 الف" required>
+                    </div>
+
+                    <!-- السعر -->
+                    <div class="form-group">
+                        <label>السعر (دينار) *</label>
+                        <input type="number" id="price" step="0.01" placeholder="السعر" required>
+                    </div>
+
+                    <!-- الكمية -->
+                    <div class="form-group">
+                        <label>الكمية / المبلغ الواصل *</label>
+                        <input type="number" id="quantity" step="0.01" placeholder="الكمية" required>
+                    </div>
+
+                    <!-- ملاحظات -->
+                    <div class="form-group">
+                        <label>ملاحظات (اختياري)</label>
+                        <textarea id="notes" placeholder="أي ملاحظات إضافية..."></textarea>
+                    </div>
+
+                    <button type="submit" class="submit-btn">💾 حفظ العملية</button>
+                </form>
+
+                <!-- آخر العمليات -->
+                <div class="recent-sales">
+                    <h3>آخر العمليات (اليوم)</h3>
+                    <div id="recentSalesList" class="sales-list">
+                        <p class="empty-msg">لا توجد عمليات بيع حتى الآن</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- تبويب التقارير -->
+        <div id="reportsTab" class="tab-content">
+            <div class="reports-container">
+                <h2>التقارير والإحصائيات</h2>
+
+                <!-- مرشحات -->
+                <div class="filters">
+                    <div class="filter-group">
+                        <label>من التاريخ:</label>
+                        <input type="date" id="dateFrom">
+                    </div>
+                    <div class="filter-group">
+                        <label>إلى التاريخ:</label>
+                        <input type="date" id="dateTo">
+                    </div>
+                    <div class="filter-group">
+                        <label>المستخدم:</label>
+                        <select id="filterUser">
+                            <option value="">الكل</option>
+                            <option value="عزوز">عزوز</option>
+                            <option value="معتز">معتز</option>
+                        </select>
+                    </div>
+                    <button onclick="applyFilters()" class="filter-btn">🔍 تطبيق</button>
+                    <button onclick="resetFilters()" class="reset-btn">↻ إعادة تعيين</button>
+                </div>
+
+                <!-- الملخص المالي -->
+                <div class="summary">
+                    <div class="summary-card">
+                        <h3>📊 إجمالي المبيعات</h3>
+                        <p id="totalSales" class="amount">0 ريال</p>
+                    </div>
+                    <div class="summary-card">
+                        <h3>🏷️ عدد العمليات</h3>
+                        <p id="totalTransactions" class="amount">0</p>
+                    </div>
+                </div>
+
+                <!-- تفصيل بالتصنيفات -->
+                <div class="breakdown">
+                    <h3>تفصيل حسب التصنيفات</h3>
+                    <div id="categoryBreakdown" class="category-list">
+                        <p class="empty-msg">لا توجد بيانات</p>
+                    </div>
+                </div>
+
+                <!-- تفصيل بالمستخدمين -->
+                <div class="breakdown">
+                    <h3>تفصيل حسب المستخدمين</h3>
+                    <div id="userBreakdown" class="category-list">
+                        <p class="empty-msg">لا توجد بيانات</p>
+                    </div>
+                </div>
+
+                <!-- جدول التفاصيل الكاملة -->
+                <div class="details-table">
+                    <h3>تفاصيل العمليات</h3>
+                    <div id="detailsTableContainer" class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>التاريخ والوقت</th>
+                                    <th>المستخدم</th>
+                                    <th>النوع</th>
+                                    <th>المادة</th>
+                                    <th>السعر</th>
+                                    <th>الكمية</th>
+                                    <th>الإجمالي</th>
+                                    <th>الملاحظات</th>
+                                    <th>الإجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detailsTableBody">
+                                <tr>
+                                    <td colspan="9" class="empty-msg">لا توجد عمليات</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- زر الطباعة -->
+                <button onclick="printReport()" class="print-btn">🖨️ طباعة التقرير</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>    
+
+</body>
+</html>
