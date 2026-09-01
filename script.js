@@ -44,10 +44,22 @@ document.addEventListener('DOMContentLoaded', async function () {
     setTodayDates();
     await loadSales();
 
-    currentUser = null;
-    selectedUser = null;
-    localStorage.removeItem(USER_KEY);
-    showUserSelect();
+    // التحقق هل كان المستخدم مسجل دخول سابقاً قبل الرفرش
+    const savedUser = localStorage.getItem(USER_KEY);
+    if (savedUser && users[savedUser]) {
+        currentUser = savedUser;
+        document.getElementById('userSelectScreen').classList.remove('active');
+        document.getElementById('pinScreen').classList.remove('active');
+        document.getElementById('mainScreen').classList.add('active');
+        document.getElementById('currentUser').textContent = `👤 ${currentUser}`;
+        updateRecentSales();
+        resetFilters();
+    } else {
+        currentUser = null;
+        selectedUser = null;
+        localStorage.removeItem(USER_KEY);
+        showUserSelect();
+    }
 });
 
 function showUserSelect() {
@@ -268,11 +280,14 @@ window.deleteSale = async function(id) {
     if (!confirm('هل أنت متأكد من حذف هذه العملية؟')) return;
 
     try {
-        if (db && firebaseReady && id && !String(id).startsWith('local-')) {
-            await deleteDoc(doc(db, 'sales', id));
+        if (db && firebaseReady && id) {
+            const stringId = String(id);
+            if (!stringId.startsWith('local-')) {
+                await deleteDoc(doc(db, 'sales', stringId));
+            }
         }
 
-        allSales = allSales.filter(sale => sale.id !== id);
+        allSales = allSales.filter(sale => String(sale.id) !== String(id));
         saveLocalSales();
         updateRecentSales();
         if (document.getElementById('reportsTab').classList.contains('active')) {
@@ -284,7 +299,7 @@ window.deleteSale = async function(id) {
         showSuccessMessage('تم حذف العملية بنجاح ✓');
     } catch (error) {
         console.error('❌ خطأ في الحذف:', error);
-        alert('حدثت مشكلة أثناء حذف العملية: ' + error.message);
+        alert('حدثت مشكلة أثناء حذف العملية من السيرفر: ' + error.message);
     }
 };
 
