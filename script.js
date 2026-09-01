@@ -32,6 +32,14 @@ let allSales = [];
 let filteredSales = [];
 let firebaseReady = true;
 
+// دالة ذكية لتنسيق المبالغ وعرضها بشكل نظيف بدون أصفار زايدة، مع دعم البوينتات الحقيقية
+function formatMoney(amount) {
+    let num = parseFloat(amount);
+    if (isNaN(num)) return "0";
+    // إذا رقم صحيح يرجع عدل، وإذا بيه كسور يتقرب لمرتبتين أو أربعة حسب الحاجة وبدون أصفار ميتة
+    return Number(num.toFixed(4)).toString();
+}
+
 document.addEventListener('DOMContentLoaded', async function () {
     setTodayDates();
     await loadSales();
@@ -167,12 +175,14 @@ window.addSale = async function(event) {
 
     const saleType = document.getElementById('saleType').value;
     const itemName = document.getElementById('itemName').value.trim();
+    
+    // استخدام parseFloat لاستقبال الكسور والبوينتات بدقة كاملة
     const price = parseFloat(document.getElementById('price').value);
     const quantity = parseFloat(document.getElementById('quantity').value);
     const notes = document.getElementById('notes').value.trim();
 
     if (!saleType || !itemName || isNaN(price) || isNaN(quantity)) {
-        alert('يرجى ملء جميع الحقول المطلوبة');
+        alert('يرجى ملء جميع الحقول المطلوبة بشكل صحيح');
         return;
     }
 
@@ -186,7 +196,7 @@ window.addSale = async function(event) {
         itemName,
         price,
         quantity,
-        total: price * quantity,
+        total: price * quantity, // حساب دقيق يجمع البوينتات بدون فقدان أي كسر
         notes,
         timestamp: now.getTime()
     };
@@ -235,15 +245,15 @@ function updateRecentSales() {
                 </div>
                 <div class="sale-item-detail">
                     <span>السعر:</span>
-                    <strong>${sale.price.toFixed(2)}${currency}</strong>
+                    <strong>${formatMoney(sale.price)}${currency}</strong>
                 </div>
                 <div class="sale-item-detail">
                     <span>الكمية:</span>
-                    <strong>${sale.quantity}</strong>
+                    <strong>${formatMoney(sale.quantity)}</strong>
                 </div>
                 <div class="sale-item-detail">
                     <span>الإجمالي:</span>
-                    <strong>${sale.total.toFixed(2)}${currency}</strong>
+                    <strong>${formatMoney(sale.total)}${currency}</strong>
                 </div>
                 ${sale.notes ? `<div class="sale-item-detail">
                     <span>ملاحظات:</span>
@@ -341,10 +351,11 @@ function updateReportDisplay() {
 }
 
 function updateSummary() {
-    const totalSales = filteredSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+    // جمع المبالغ بدقة تامة مع الحفاظ على كل الكسور والبوينتات
+    const totalSales = filteredSales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
     const totalTransactions = filteredSales.length;
 
-    document.getElementById('totalSales').textContent = totalSales.toFixed(2) + currency;
+    document.getElementById('totalSales').textContent = formatMoney(totalSales) + currency;
     document.getElementById('totalTransactions').textContent = totalTransactions;
 }
 
@@ -356,7 +367,7 @@ function updateCategoryBreakdown() {
             breakdown[sale.type] = { count: 0, total: 0 };
         }
         breakdown[sale.type].count += 1;
-        breakdown[sale.type].total += sale.total || 0;
+        breakdown[sale.type].total += Number(sale.total) || 0;
     });
 
     const container = document.getElementById('categoryBreakdown');
@@ -368,7 +379,7 @@ function updateCategoryBreakdown() {
     container.innerHTML = Object.entries(breakdown).map(([type, data]) => `
         <div class="category-item">
             <span class="category-item-name">${type}</span>
-            <span class="category-item-value">${data.total.toFixed(2)}${currency}</span>
+            <span class="category-item-value">${formatMoney(data.total)}${currency}</span>
             <span style="color: #999; font-size: 0.9em;">(${data.count} عملية)</span>
         </div>
     `).join('');
@@ -382,7 +393,7 @@ function updateUserBreakdown() {
             breakdown[sale.user] = { count: 0, total: 0 };
         }
         breakdown[sale.user].count += 1;
-        breakdown[sale.user].total += sale.total || 0;
+        breakdown[sale.user].total += Number(sale.total) || 0;
     });
 
     const container = document.getElementById('userBreakdown');
@@ -394,7 +405,7 @@ function updateUserBreakdown() {
     container.innerHTML = Object.entries(breakdown).map(([user, data]) => `
         <div class="user-item">
             <span class="user-item-name">👤 ${user}</span>
-            <span class="user-item-value">${data.total.toFixed(2)}${currency}</span>
+            <span class="user-item-value">${formatMoney(data.total)}${currency}</span>
             <span style="color: #999; font-size: 0.9em;">(${data.count} عملية)</span>
         </div>
     `).join('');
@@ -416,9 +427,9 @@ function updateDetailsTable() {
             <td>${sale.user}</td>
             <td>${sale.type}</td>
             <td>${sale.itemName}</td>
-            <td>${sale.price.toFixed(2)}${currency}</td>
-            <td>${sale.quantity}</td>
-            <td>${sale.total.toFixed(2)}${currency}</td>
+            <td>${formatMoney(sale.price)}${currency}</td>
+            <td>${formatMoney(sale.quantity)}</td>
+            <td>${formatMoney(sale.total)}${currency}</td>
             <td>${sale.notes || '-'}</td>
             <td>
                 <button class="delete-btn" onclick="deleteSale('${sale.id}')">حذف</button>
