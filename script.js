@@ -246,7 +246,7 @@ function updateRecentSales() {
             <div class="sale-item-header">
                 <span class="sale-item-type">${sale.type}</span>
                 <span class="sale-item-time">${sale.time}</span>
-                <button class="delete-btn-small" onclick="deleteSale('${sale.id}')">حذف</button>
+                <button class="delete-btn-small" onclick="deleteSale('${sale.id || ''}', '${sale.itemName || ''}', ${sale.price || 0}, '${sale.time || ''}')">حذف</button>
             </div>
             <div class="sale-item-details">
                 <div class="sale-item-detail">
@@ -274,27 +274,38 @@ function updateRecentSales() {
     `).join('');
 }
 
-// دالة الحذف المحدثة والمضبوطة نهائياً
-window.deleteSale = async function(id) {
+// دالة الحذف الذكية والمحدثة نهائياً للتعامل مع الـ ID التالف أو البيانات المفقودة
+window.deleteSale = async function(id, itemName, salePrice, saleTime) {
     if (!confirm('هل أنت متأكد من حذف هذه العملية؟')) return;
 
     try {
-        const stringId = String(id).trim();
-        console.log("محاولة حذف العنصر برقم ID:", stringId);
+        const stringId = String(id || '').trim();
+        console.log("محاولة حذف العنصر، الـ ID:", stringId);
 
-        // الحذف من فايربيس إذا كان الـ ID حقيقي مو محلي
-        if (db && firebaseReady && stringId && !stringId.startsWith('local-') && stringId !== 'undefined' && stringId !== 'null') {
-            await deleteDoc(doc(db, 'sales', stringId));
-            console.log("✅ تم الحذف من قاعدة بيانات Firebase بنجاح");
+        // 1. محاولة الحذف من فايربيس إذا كان الـ ID حقيقي ومو تالف
+        if (db && firebaseReady && stringId && !stringId.startsWith('local-') && stringId !== 'undefined' && stringId !== 'null' && stringId !== '') {
+            try {
+                await deleteDoc(doc(db, 'sales', stringId));
+                console.log("✅ تم الحذف من قاعدة بيانات Firebase بنجاح");
+            } catch (fbErr) {
+                console.warn("⚠️ لم يتم العثور على المستند في فايربيس بالـ ID، سيتم حذفه محلياً:", fbErr);
+            }
         }
 
-        // تحديث المصفوفة المحلية بحذف العنصر المطابق حصراً
-        allSales = allSales.filter(sale => String(sale.id).trim() !== stringId);
+        // 2. تصفية المصفوفة محلياً (مطابقة بالـ ID أو بمحتوى العنصر إذا كان الـ ID تالف)
+        allSales = allSales.filter(sale => {
+            const currentId = String(sale.id || '').trim();
+            const isIdMatch = currentId === stringId && stringId !== '' && stringId !== 'undefined' && stringId !== 'null';
+            const isDataMatch = sale.itemName === itemName && Number(sale.price) === Number(salePrice) && sale.time === saleTime;
+            
+            // إرجاع العناصر التي لا تطابق العنصر المراد حذفه
+            return !(isIdMatch || isDataMatch);
+        });
         
-        // حفظ التحديث الجديد فوراً في التخزين المحلي لضمان عدم عودته عند الرفرش
+        // 3. حفظ التحديث الجديد فوراً في التخزين المحلي لضمان عدم عودته عند الرفرش
         saveLocalSales();
 
-        // إعادة ضبط الفلاتر والعرض
+        // 4. إعادة ضبط الفلاتر والعرض
         filteredSales = [...allSales];
         updateRecentSales();
         
@@ -454,7 +465,7 @@ function updateDetailsTable() {
             <td>${formatMoney(sale.total)}${currency}</td>
             <td>${sale.notes || '-'}</td>
             <td>
-                <button class="delete-btn" onclick="deleteSale('${sale.id}')">حذف</button>
+                <button class="delete-btn" onclick="deleteSale('${sale.id || ''}', '${sale.itemName || ''}', ${sale.price || 0}, '${sale.time || ''}')">حذف</button>
             </td>
         </tr>
     `).join('');
