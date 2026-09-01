@@ -36,7 +36,6 @@ let firebaseReady = true;
 function formatMoney(amount) {
     let num = parseFloat(amount);
     if (isNaN(num)) return "0";
-    // إذا رقم صحيح يرجع عدل، وإذا بيه كسور يتقرب لمرتبتين أو أربعة حسب الحاجة وبدون أصفار ميتة
     return Number(num.toFixed(4)).toString();
 }
 
@@ -188,7 +187,6 @@ window.addSale = async function(event) {
     const saleType = document.getElementById('saleType').value;
     const itemName = document.getElementById('itemName').value.trim();
     
-    // استخدام parseFloat لاستقبال الكسور والبوينتات بدقة كاملة
     const price = parseFloat(document.getElementById('price').value);
     const quantity = parseFloat(document.getElementById('quantity').value);
     const notes = document.getElementById('notes').value.trim();
@@ -208,7 +206,7 @@ window.addSale = async function(event) {
         itemName,
         price,
         quantity,
-        total: price * quantity, // حساب دقيق يجمع البوينتات بدون فقدان أي كسر
+        total: price * quantity,
         notes,
         timestamp: now.getTime()
     };
@@ -276,20 +274,30 @@ function updateRecentSales() {
     `).join('');
 }
 
+// دالة الحذف المحدثة والمضبوطة نهائياً
 window.deleteSale = async function(id) {
     if (!confirm('هل أنت متأكد من حذف هذه العملية؟')) return;
 
     try {
-        if (db && firebaseReady && id) {
-            const stringId = String(id);
-            if (!stringId.startsWith('local-')) {
-                await deleteDoc(doc(db, 'sales', stringId));
-            }
+        const stringId = String(id).trim();
+        console.log("محاولة حذف العنصر برقم ID:", stringId);
+
+        // الحذف من فايربيس إذا كان الـ ID حقيقي مو محلي
+        if (db && firebaseReady && stringId && !stringId.startsWith('local-') && stringId !== 'undefined' && stringId !== 'null') {
+            await deleteDoc(doc(db, 'sales', stringId));
+            console.log("✅ تم الحذف من قاعدة بيانات Firebase بنجاح");
         }
 
-        allSales = allSales.filter(sale => String(sale.id) !== String(id));
+        // تحديث المصفوفة المحلية بحذف العنصر المطابق حصراً
+        allSales = allSales.filter(sale => String(sale.id).trim() !== stringId);
+        
+        // حفظ التحديث الجديد فوراً في التخزين المحلي لضمان عدم عودته عند الرفرش
         saveLocalSales();
+
+        // إعادة ضبط الفلاتر والعرض
+        filteredSales = [...allSales];
         updateRecentSales();
+        
         if (document.getElementById('reportsTab').classList.contains('active')) {
             applyFilters();
         } else {
@@ -298,8 +306,8 @@ window.deleteSale = async function(id) {
 
         showSuccessMessage('تم حذف العملية بنجاح ✓');
     } catch (error) {
-        console.error('❌ خطأ في الحذف:', error);
-        alert('حدثت مشكلة أثناء حذف العملية من السيرفر: ' + error.message);
+        console.error('❌ خطأ تفصيلي أثناء الحذف:', error);
+        alert('فشل الحذف: ' + error.message);
     }
 };
 
@@ -366,7 +374,6 @@ function updateReportDisplay() {
 }
 
 function updateSummary() {
-    // جمع المبالغ بدقة تامة مع الحفاظ على كل الكسور والبوينتات
     const totalSales = filteredSales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
     const totalTransactions = filteredSales.length;
 
