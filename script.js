@@ -1,8 +1,6 @@
-// 1. استيراد مكتبات Firebase بالطريقة الحديثة والاصدار المستقر
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
-// 2. إعدادات فايربيس الخاصة بمشروعك
 const firebaseConfig = {
     apiKey: "AIzaSyAjf1_jvN1e98c4c-QwUtqg3_UAxMRak3k",
     authDomain: "shop-managment-ab098.firebaseapp.com",
@@ -12,11 +10,9 @@ const firebaseConfig = {
     appId: "1:80638375251:web:5546bb963a9ff4d4dfc266"
 };
 
-// 3. تهيئة التطبيق وقاعدة البيانات وتصديرها
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
-// نظام إدارة المحل - نسخة مستقرة مع دعم Firebase + fallback محلي
 const users = {
     'عزوز': '1122334455',
     'معتز': '1122332211'
@@ -32,6 +28,12 @@ let allSales = [];
 let filteredSales = [];
 let firebaseReady = true;
 
+function formatMoney(amount) {
+    let num = parseFloat(amount);
+    if (isNaN(num)) return "0";
+    return Number(num.toFixed(4)).toString();
+}
+
 document.addEventListener('DOMContentLoaded', async function () {
     setTodayDates();
     await loadSales();
@@ -40,15 +42,16 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (savedUser && users[savedUser]) {
         currentUser = savedUser;
         selectedUser = savedUser;
-        document.getElementById('currentUser').textContent = `👤 ${currentUser}`;
         document.getElementById('userSelectScreen').classList.remove('active');
         document.getElementById('pinScreen').classList.remove('active');
         document.getElementById('mainScreen').classList.add('active');
+        document.getElementById('currentUser').textContent = `👤 ${currentUser}`;
         updateRecentSales();
         resetFilters();
     } else {
         currentUser = null;
         selectedUser = null;
+        localStorage.removeItem(USER_KEY);
         showUserSelect();
     }
 });
@@ -78,7 +81,7 @@ async function loadSales() {
 
             console.log('✅ تم تحميل البيانات من Firebase');
         } catch (error) {
-            console.warn('⚠️ Firebase غير متاح، سيتم استخدام البيانات المحلية:', error.message);
+            console.warn('⚠️ Firebase غير متاح:', error.message);
             allSales = fallbackSales;
         }
     }
@@ -181,15 +184,20 @@ window.addSale = async function(event) {
     const notes = document.getElementById('notes').value.trim();
 
     if (!saleType || !itemName || isNaN(price) || isNaN(quantity)) {
-        alert('يرجى ملء جميع الحقول المطلوبة');
+        alert('يرجى ملء جميع الحقول المطلوبة بشكل صحيح');
         return;
     }
 
     const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const formattedDate = `${year}/${month}/${day}`;
+
     const newSale = {
         id: '',
-        date: now.toLocaleDateString('ar-SA'),
-        time: now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+        date: formattedDate,
+        time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
         user: currentUser,
         type: saleType,
         itemName,
@@ -215,14 +223,18 @@ window.addSale = async function(event) {
         resetFilters();
         showSuccessMessage('تم حفظ العملية بنجاح ✓');
     } catch (error) {
-        console.error('خطأ في حفظ العملية:', error);
         alert('حدثت مشكلة أثناء الحفظ: ' + error.message);
     }
 };
 
 function updateRecentSales() {
     const container = document.getElementById('recentSalesList');
-    const today = new Date().toLocaleDateString('ar-SA');
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const today = `${year}/${month}/${day}`;
+
     const todaySales = allSales.filter(sale => sale.date === today);
 
     if (todaySales.length === 0) {
@@ -235,45 +247,44 @@ function updateRecentSales() {
             <div class="sale-item-header">
                 <span class="sale-item-type">${sale.type}</span>
                 <span class="sale-item-time">${sale.time}</span>
-                <button class="delete-btn-small" onclick="deleteSale('${sale.id}')">حذف</button>
+                <button class="delete-btn-small" onclick="deleteSale('${sale.id || ''}', '${sale.itemName || ''}', ${sale.price || 0}, '${sale.time || ''}')">حذف</button>
             </div>
             <div class="sale-item-details">
-                <div class="sale-item-detail">
-                    <span>المادة:</span>
-                    <strong>${sale.itemName}</strong>
-                </div>
-                <div class="sale-item-detail">
-                    <span>السعر:</span>
-                    <strong>${sale.price.toFixed(2)}${currency}</strong>
-                </div>
-                <div class="sale-item-detail">
-                    <span>الكمية:</span>
-                    <strong>${sale.quantity}</strong>
-                </div>
-                <div class="sale-item-detail">
-                    <span>الإجمالي:</span>
-                    <strong>${sale.total.toFixed(2)}${currency}</strong>
-                </div>
-                ${sale.notes ? `<div class="sale-item-detail">
-                    <span>ملاحظات:</span>
-                    <strong>${sale.notes}</strong>
-                </div>` : ''}
+                <div class="sale-item-detail"><span>المادة:</span><strong>${sale.itemName}</strong></div>
+                <div class="sale-item-detail"><span>السعر:</span><strong>${formatMoney(sale.price)}${currency}</strong></div>
+                <div class="sale-item-detail"><span>الكمية:</span><strong>${formatMoney(sale.quantity)}</strong></div>
+                <div class="sale-item-detail"><span>الإجمالي:</span><strong>${formatMoney(sale.total)}${currency}</strong></div>
+                ${sale.notes ? `<div class="sale-item-detail"><span>ملاحظات:</span><strong>${sale.notes}</strong></div>` : ''}
             </div>
         </div>
     `).join('');
 }
 
-window.deleteSale = async function(id) {
+window.deleteSale = async function(id, itemName, salePrice, saleTime) {
     if (!confirm('هل أنت متأكد من حذف هذه العملية؟')) return;
 
     try {
-        if (db && firebaseReady && id && !String(id).startsWith('local-')) {
-            await deleteDoc(doc(db, 'sales', id));
+        const stringId = String(id || '').trim();
+
+        if (db && firebaseReady && stringId && !stringId.startsWith('local-') && stringId !== 'undefined' && stringId !== '') {
+            try {
+                await deleteDoc(doc(db, 'sales', stringId));
+            } catch (fbErr) {
+                console.warn("⚠️ لم يتم العثور على المستند في فايربيس");
+            }
         }
 
-        allSales = allSales.filter(sale => sale.id !== id);
+        allSales = allSales.filter(sale => {
+            const currentId = String(sale.id || '').trim();
+            const isIdMatch = currentId === stringId && stringId !== '';
+            const isDataMatch = sale.itemName === itemName && Number(sale.price) === Number(salePrice) && sale.time === saleTime;
+            return !(isIdMatch || isDataMatch);
+        });
+
         saveLocalSales();
+        filteredSales = [...allSales];
         updateRecentSales();
+
         if (document.getElementById('reportsTab').classList.contains('active')) {
             applyFilters();
         } else {
@@ -282,14 +293,13 @@ window.deleteSale = async function(id) {
 
         showSuccessMessage('تم حذف العملية بنجاح ✓');
     } catch (error) {
-        console.error('❌ خطأ في الحذف:', error);
-        alert('حدثت مشكلة أثناء حذف العملية: ' + error.message);
+        alert('فشل الحذف: ' + error.message);
     }
 };
 
 window.applyFilters = function() {
     const dateFrom = document.getElementById('dateFrom').value;
-    const dateTo = document.getElementById('dateTo').value;
+
     const filterUser = document.getElementById('filterUser').value;
     const fromTimestamp = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
     const toTimestamp = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
@@ -306,7 +316,7 @@ window.applyFilters = function() {
             match = false;
         }
 
-        if (filterUser && sale.user !== filterUser) {
+        if (filterUser && filterUser !== "" && sale.user !== filterUser) {
             match = false;
         }
 
@@ -321,8 +331,7 @@ window.resetFilters = function() {
     document.getElementById('dateFrom').value = today;
     document.getElementById('dateTo').value = today;
     document.getElementById('filterUser').value = '';
-    filteredSales = [...allSales];
-    updateReportDisplay();
+    applyFilters();
 };
 
 function setTodayDates() {
@@ -334,9 +343,15 @@ function setTodayDates() {
 }
 
 function parseDate(dateString) {
-    const parts = dateString.split('/');
+    if (!dateString) return new Date();
+    const cleanDate = dateString.replace(/-/g, '/');
+    const parts = cleanDate.split('/');
     if (parts.length === 3) {
-        return new Date(parts[2], parts[1] - 1, parts[0]);
+        if (parts[0].length === 4) {
+            return new Date(parts[0], parts[1] - 1, parts[2]);
+        } else {
+            return new Date(parts[2], parts[1] - 1, parts[0]);
+        }
     }
     return new Date(dateString);
 }
@@ -349,22 +364,21 @@ function updateReportDisplay() {
 }
 
 function updateSummary() {
-    const totalSales = filteredSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+    const totalSales = filteredSales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
     const totalTransactions = filteredSales.length;
 
-    document.getElementById('totalSales').textContent = totalSales.toFixed(2) + currency;
+    document.getElementById('totalSales').textContent = formatMoney(totalSales) + currency;
     document.getElementById('totalTransactions').textContent = totalTransactions;
 }
 
 function updateCategoryBreakdown() {
     const breakdown = {};
-
     filteredSales.forEach(sale => {
         if (!breakdown[sale.type]) {
             breakdown[sale.type] = { count: 0, total: 0 };
         }
         breakdown[sale.type].count += 1;
-        breakdown[sale.type].total += sale.total || 0;
+        breakdown[sale.type].total += Number(sale.total) || 0;
     });
 
     const container = document.getElementById('categoryBreakdown');
@@ -376,7 +390,7 @@ function updateCategoryBreakdown() {
     container.innerHTML = Object.entries(breakdown).map(([type, data]) => `
         <div class="category-item">
             <span class="category-item-name">${type}</span>
-            <span class="category-item-value">${data.total.toFixed(2)}${currency}</span>
+            <span class="category-item-value">${formatMoney(data.total)}${currency}</span>
             <span style="color: #999; font-size: 0.9em;">(${data.count} عملية)</span>
         </div>
     `).join('');
@@ -384,13 +398,12 @@ function updateCategoryBreakdown() {
 
 function updateUserBreakdown() {
     const breakdown = {};
-
     filteredSales.forEach(sale => {
         if (!breakdown[sale.user]) {
             breakdown[sale.user] = { count: 0, total: 0 };
         }
         breakdown[sale.user].count += 1;
-        breakdown[sale.user].total += sale.total || 0;
+        breakdown[sale.user].total += Number(sale.total) || 0;
     });
 
     const container = document.getElementById('userBreakdown');
@@ -402,7 +415,7 @@ function updateUserBreakdown() {
     container.innerHTML = Object.entries(breakdown).map(([user, data]) => `
         <div class="user-item">
             <span class="user-item-name">👤 ${user}</span>
-            <span class="user-item-value">${data.total.toFixed(2)}${currency}</span>
+            <span class="user-item-value">${formatMoney(data.total)}${currency}</span>
             <span style="color: #999; font-size: 0.9em;">(${data.count} عملية)</span>
         </div>
     `).join('');
@@ -410,7 +423,6 @@ function updateUserBreakdown() {
 
 function updateDetailsTable() {
     const tableBody = document.getElementById('detailsTableBody');
-
     if (!tableBody) return;
 
     if (filteredSales.length === 0) {
@@ -424,12 +436,12 @@ function updateDetailsTable() {
             <td>${sale.user}</td>
             <td>${sale.type}</td>
             <td>${sale.itemName}</td>
-            <td>${sale.price.toFixed(2)}${currency}</td>
-            <td>${sale.quantity}</td>
-            <td>${sale.total.toFixed(2)}${currency}</td>
+            <td>${formatMoney(sale.price)}${currency}</td>
+            <td>${formatMoney(sale.quantity)}</td>
+            <td>${formatMoney(sale.total)}${currency}</td>
             <td>${sale.notes || '-'}</td>
             <td>
-                <button class="delete-btn" onclick="deleteSale('${sale.id}')">حذف</button>
+                <button class="delete-btn" onclick="deleteSale('${sale.id || ''}', '${sale.itemName || ''}', ${sale.price || 0}, '${sale.time || ''}')">حذف</button>
             </td>
         </tr>
     `).join('');
