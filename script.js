@@ -197,10 +197,16 @@ window.addSale = async function(event) {
     }
 
     const now = new Date();
+    // حفظ التاريخ بصيغة ميلادية قياسية (YYYY-MM-DD) لضمان دقة الفلترة والمقارنة
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const formattedDate = `${year}/${month}/${day}`;
+
     const newSale = {
         id: '',
-        date: now.toLocaleDateString('ar-SA'),
-        time: now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+        date: formattedDate,
+        time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
         user: currentUser,
         type: saleType,
         itemName,
@@ -233,7 +239,12 @@ window.addSale = async function(event) {
 
 function updateRecentSales() {
     const container = document.getElementById('recentSalesList');
-    const today = new Date().toLocaleDateString('ar-SA');
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const today = `${year}/${month}/${day}`;
+    
     const todaySales = allSales.filter(sale => sale.date === today);
 
     if (todaySales.length === 0) {
@@ -274,38 +285,28 @@ function updateRecentSales() {
     `).join('');
 }
 
-// دالة الحذف الذكية والمحدثة نهائياً للتعامل مع الـ ID التالف أو البيانات المفقودة
 window.deleteSale = async function(id, itemName, salePrice, saleTime) {
     if (!confirm('هل أنت متأكد من حذف هذه العملية؟')) return;
 
     try {
         const stringId = String(id || '').trim();
-        console.log("محاولة حذف العنصر، الـ ID:", stringId);
 
-        // 1. محاولة الحذف من فايربيس إذا كان الـ ID حقيقي ومو تالف
         if (db && firebaseReady && stringId && !stringId.startsWith('local-') && stringId !== 'undefined' && stringId !== 'null' && stringId !== '') {
             try {
                 await deleteDoc(doc(db, 'sales', stringId));
-                console.log("✅ تم الحذف من قاعدة بيانات Firebase بنجاح");
             } catch (fbErr) {
-                console.warn("⚠️ لم يتم العثور على المستند في فايربيس بالـ ID، سيتم حذفه محلياً:", fbErr);
+                console.warn("⚠️ لم يتم العثور على المستند في فايربيس:", fbErr);
             }
         }
 
-        // 2. تصفية المصفوفة محلياً (مطابقة بالـ ID أو بمحتوى العنصر إذا كان الـ ID تالف)
         allSales = allSales.filter(sale => {
             const currentId = String(sale.id || '').trim();
             const isIdMatch = currentId === stringId && stringId !== '' && stringId !== 'undefined' && stringId !== 'null';
             const isDataMatch = sale.itemName === itemName && Number(sale.price) === Number(salePrice) && sale.time === saleTime;
-            
-            // إرجاع العناصر التي لا تطابق العنصر المراد حذفه
             return !(isIdMatch || isDataMatch);
         });
         
-        // 3. حفظ التحديث الجديد فوراً في التخزين المحلي لضمان عدم عودته عند الرفرش
         saveLocalSales();
-
-        // 4. إعادة ضبط الفلاتر والعرض
         filteredSales = [...allSales];
         updateRecentSales();
         
@@ -317,32 +318,35 @@ window.deleteSale = async function(id, itemName, salePrice, saleTime) {
 
         showSuccessMessage('تم حذف العملية بنجاح ✓');
     } catch (error) {
-        console.error('❌ خطأ تفصيلي أثناء الحذف:', error);
+        console.error('❌ خطأ أثناء الحذف:', error);
         alert('فشل الحذف: ' + error.message);
     }
 };
 
 window.applyFilters = function() {
-    const dateFrom = document.getElementById('dateFrom').value;
-    const dateTo = document.getElementById('dateTo').value;
+    const dateFromVal = document.getElementById('dateFrom').value; // صيغة YYYY-MM-DD
+    const dateToVal = document.getElementById('dateTo').value;     // صيغة YYYY-MM-DD
     const filterUser = document.getElementById('filterUser').value;
 
     filteredSales = allSales.filter(sale => {
         let match = true;
+        const saleDateObj = parseDate(sale.date); // تحويل تاريخ العملية إلى كائن Date منتصف الليل
 
-        if (dateFrom) {
-            const fromDate = new Date(dateFrom);
-            const saleDate = parseDate(sale.date);
-            if (saleDate < fromDate) match = false;
+        if (dateFromVal) {
+            const fromDateObj = new Date(dateFromVal);
+            fromDateObj.setHours(0, 0, 0, 0);
+            saleDateObj.setHours(0, 0, 0, 0);
+            if (saleDateObj < fromDateObj) match = false;
         }
 
-        if (dateTo) {
-            const toDate = new Date(dateTo);
-            const saleDate = parseDate(sale.date);
-            if (saleDate > toDate) match = false;
+        if (dateToVal) {
+            const toDateObj = new Date(dateToVal);
+            toDateObj.setHours(23, 59, 59, 999);
+            saleDateObj.setHours(0, 0, 0, 0);
+            if (saleDateObj > toDateObj) match = false;
         }
 
-        if (filterUser && sale.user !== filterUser) {
+        if (filterUser && filterUser !== "" && sale.user !== filterUser) {
             match = false;
         }
 
@@ -357,8 +361,9 @@ window.resetFilters = function() {
     document.getElementById('dateFrom').value = today;
     document.getElementById('dateTo').value = today;
     document.getElementById('filterUser').value = '';
-    filteredSales = [...allSales];
-    updateReportDisplay();
+    
+    // تطبيق الفلتر المباشر ليجلب مبيعات اليوم فقط أو الكل حسب الرغبة (هنا يفلتر على تاريخ اليوم افتراضياً)
+    applyFilters();
 };
 
 function setTodayDates() {
@@ -370,9 +375,17 @@ function setTodayDates() {
 }
 
 function parseDate(dateString) {
-    const parts = dateString.split('/');
+    if (!dateString) return new Date();
+    // معالجة النصوص سواء كانت مخزنة بـ / أو -
+    const cleanDate = dateString.replace(/-/g, '/');
+    const parts = cleanDate.split('/');
     if (parts.length === 3) {
-        return new Date(parts[2], parts[1] - 1, parts[0]);
+        // دعم التنسيق YYYY/MM/DD أو DD/MM/YYYY
+        if (parts[0].length === 4) {
+            return new Date(parts[0], parts[1] - 1, parts[2]);
+        } else {
+            return new Date(parts[2], parts[1] - 1, parts[0]);
+        }
     }
     return new Date(dateString);
 }
