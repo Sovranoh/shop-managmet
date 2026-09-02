@@ -14,11 +14,11 @@
             <p>اختر المستخدم للبدء</p>
             
             <div class="users-buttons">
-                <button class="user-btn" onclick="selectUser('عزوز')">
+                <button class="user-btn" id="btnAzzouz">
                     <span class="user-icon">👤</span>
                     <span class="user-name">عزوز</span>
                 </button>
-                <button class="user-btn" onclick="selectUser('معتز')">
+                <button class="user-btn" id="btnMotaz">
                     <span class="user-icon">👤</span>
                     <span class="user-name">معتز</span>
                 </button>
@@ -32,20 +32,16 @@
             <h1>🔐 إدخال الرمز الأمني</h1>
             <p id="pinUserDisplay">المستخدم: </p>
             
-            <form id="pinForm" onsubmit="verifyPin(event)">
+            <form id="pinForm">
                 <div class="form-group">
                     <label>الرمز الأمني (PIN):</label>
                     <input type="password" id="pinInput" placeholder="أدخل رمزك الأمني" required autocomplete="off">
                 </div>
                 <button type="submit" class="submit-btn">دخول</button>
-                <button type="button" class="cancel-btn" onclick="backToUserSelect()">الرجوع</button>
+                <button type="button" class="cancel-btn" id="backBtn">الرجوع</button>
             </form>
             <p id="pinError" class="error-msg"></p>
         </div>
-    </div>
-
-    <!-- شاشة تسجيل الدخول (مخفية - للتوافق) -->
-    <div id="loginScreen" class="screen" style="display:none;">
     </div>
 
     <!-- الشاشة الرئيسية -->
@@ -55,19 +51,15 @@
                 <h1>🏪 المحل</h1>
                 <div class="user-info">
                     <span id="currentUser" class="user-badge">المستخدم</span>
-                    <button onclick="logout()" class="logout-btn">تسجيل خروج</button>
+                    <button id="logoutBtn" class="logout-btn">تسجيل خروج</button>
                 </div>
             </div>
         </header>
 
         <!-- التبويبات -->
         <div class="tabs">
-            <button class="tab-btn active" data-tab="sales" onclick="switchTab('sales', event)">
-                📊 تسجيل المبيعات
-            </button>
-            <button class="tab-btn" data-tab="reports" onclick="switchTab('reports', event)">
-                📈 التقارير
-            </button>
+            <button class="tab-btn active" data-tab="sales">📊 تسجيل المبيعات</button>
+            <button class="tab-btn" data-tab="reports">📈 التقارير</button>
         </div>
 
         <!-- تبويب تسجيل المبيعات -->
@@ -75,11 +67,10 @@
             <div class="sales-container">
                 <h2>تسجيل عملية بيع جديدة</h2>
                 
-                <form id="salesForm" onsubmit="addSale(event)">
-                    <!-- نوع البيع -->
+                <form id="salesForm">
                     <div class="form-group">
                         <label>نوع البيع *</label>
-                        <select id="saleType" required onchange="updateServiceType()">
+                        <select id="saleType" required>
                             <option value="">اختر النوع</option>
                             <option value="رصيد">📱 كارتات رصيد</option>
                             <option value="اكسسوارات">🎧 اكسسوارات</option>
@@ -88,25 +79,21 @@
                         </select>
                     </div>
 
-                    <!-- اسم المادة -->
                     <div class="form-group">
                         <label>اسم المادة أو الخدمة *</label>
                         <input type="text" id="itemName" placeholder="مثال: رصيد زين 100 الف" required>
                     </div>
 
-                    <!-- السعر -->
                     <div class="form-group">
                         <label>السعر (دينار) *</label>
                         <input type="number" id="price" step="any" placeholder="السعر" required>
                     </div>
 
-                    <!-- الكمية -->
                     <div class="form-group">
                         <label>الكمية / المبلغ الواصل *</label>
                         <input type="number" id="quantity" step="any" placeholder="الكمية" required>
                     </div>
 
-                    <!-- ملاحظات -->
                     <div class="form-group">
                         <label>ملاحظات (اختياري)</label>
                         <textarea id="notes" placeholder="أي ملاحظات إضافية..."></textarea>
@@ -115,7 +102,6 @@
                     <button type="submit" class="submit-btn">💾 حفظ العملية</button>
                 </form>
 
-                <!-- آخر العمليات -->
                 <div class="recent-sales">
                     <h3>آخر العمليات (اليوم)</h3>
                     <div id="recentSalesList" class="sales-list">
@@ -130,7 +116,6 @@
             <div class="reports-container">
                 <h2>التقارير والإحصائيات</h2>
 
-                <!-- مرشحات -->
                 <div class="filters">
                     <div class="filter-group">
                         <label>من التاريخ:</label>
@@ -148,11 +133,10 @@
                             <option value="معتز">معتز</option>
                         </select>
                     </div>
-                    <button onclick="applyFilters()" class="filter-btn">🔍 تطبيق</button>
-                    <button onclick="resetFilters()" class="reset-btn">↻ إعادة تعيين</button>
+                    <button type="button" id="applyFilterBtn" class="filter-btn">🔍 تطبيق</button>
+                    <button type="button" id="resetFilterBtn" class="reset-btn">↻ إعادة تعيين</button>
                 </div>
 
-                <!-- الملخص المالي -->
                 <div class="summary">
                     <div class="summary-card">
                         <h3>📊 إجمالي المبيعات</h3>
@@ -164,7 +148,6 @@
                     </div>
                 </div>
 
-                <!-- تفصيل بالتصنيفات -->
                 <div class="breakdown">
                     <h3>تفصيل حسب التصنيفات</h3>
                     <div id="categoryBreakdown" class="category-list">
@@ -172,7 +155,6 @@
                     </div>
                 </div>
 
-                <!-- تفصيل بالمستخدمين -->
                 <div class="breakdown">
                     <h3>تفصيل حسب المستخدمين</h3>
                     <div id="userBreakdown" class="category-list">
@@ -180,7 +162,6 @@
                     </div>
                 </div>
 
-                <!-- جدول التفاصيل الكاملة -->
                 <div class="details-table">
                     <h3>تفاصيل العمليات</h3>
                     <div id="detailsTableContainer" class="table-container">
@@ -207,13 +188,11 @@
                     </div>
                 </div>
 
-                <!-- زر الطباعة -->
-                <button onclick="printReport()" class="print-btn">🖨️ طباعة التقرير</button>
+                <button type="button" id="printBtn" class="print-btn">🖨️ طباعة التقرير</button>
             </div>
         </div>
     </div>
 
     <script type="module" src="script.js"></script>    
-
 </body>
 </html>
