@@ -38,22 +38,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     setTodayDates();
     await loadSales();
 
-    // ربط الأزرار برمجياً لحل مشكلة الـ Modules
-    document.getElementById('btnAzzouz').addEventListener('click', () => selectUser('عزوز'));
-    document.getElementById('btnMotaz').addEventListener('click', () => selectUser('معتز'));
-    document.getElementById('pinForm').addEventListener('submit', verifyPin);
-    document.getElementById('backBtn').addEventListener('click', backToUserSelect);
-    document.getElementById('logoutBtn').addEventListener('click', logout);
-
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => switchTab(btn.dataset.tab, e));
-    });
-
-    document.getElementById('salesForm').addEventListener('submit', addSale);
-    document.getElementById('applyFilterBtn').addEventListener('click', applyFilters);
-    document.getElementById('resetFilterBtn').addEventListener('click', resetFilters);
-    document.getElementById('printBtn').addEventListener('click', printReport);
-
     const savedUser = localStorage.getItem(USER_KEY);
     if (savedUser && users[savedUser]) {
         currentUser = savedUser;
@@ -96,7 +80,7 @@ async function loadSales() {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(allSales));
             }
         } catch (error) {
-            console.warn('⚠️ استخدام التخزين المحلي:', error.message);
+            console.warn('⚠️ Firebase غير متاح:', error.message);
             allSales = fallbackSales;
         }
     }
@@ -111,7 +95,7 @@ function saveLocalSales() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(allSales));
 }
 
-function selectUser(username) {
+window.selectUser = function(username) {
     selectedUser = username;
     document.getElementById('userSelectScreen').classList.remove('active');
     document.getElementById('pinScreen').classList.add('active');
@@ -119,9 +103,9 @@ function selectUser(username) {
     document.getElementById('pinInput').value = '';
     document.getElementById('pinError').textContent = '';
     setTimeout(() => document.getElementById('pinInput').focus(), 100);
-}
+};
 
-function verifyPin(event) {
+window.verifyPin = function(event) {
     event.preventDefault();
 
     const enteredPin = document.getElementById('pinInput').value;
@@ -146,17 +130,17 @@ function verifyPin(event) {
         document.getElementById('pinInput').value = '';
         document.getElementById('pinInput').focus();
     }
-}
+};
 
-function backToUserSelect() {
+window.backToUserSelect = function() {
     selectedUser = null;
     document.getElementById('pinScreen').classList.remove('active');
     document.getElementById('userSelectScreen').classList.add('active');
     document.getElementById('pinInput').value = '';
     document.getElementById('pinError').textContent = '';
-}
+};
 
-function logout() {
+window.logout = function() {
     if (confirm('هل تريد تسجيل الخروج؟')) {
         currentUser = null;
         selectedUser = null;
@@ -165,11 +149,14 @@ function logout() {
         document.getElementById('userSelectScreen').classList.add('active');
         document.getElementById('salesForm').reset();
     }
-}
+};
 
-function switchTab(tabName, event) {
-    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
+window.switchTab = function(tabName, event) {
+    const tabs = document.querySelectorAll('.tab-content');
+    tabs.forEach(tab => tab.classList.remove('active'));
+
+    const buttons = document.querySelectorAll('.tab-btn');
+    buttons.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
 
     const selectedTab = document.getElementById(tabName + 'Tab');
     if (selectedTab) {
@@ -179,9 +166,9 @@ function switchTab(tabName, event) {
     if (tabName === 'reports') {
         resetFilters();
     }
-}
+};
 
-async function addSale(event) {
+window.addSale = async function(event) {
     event.preventDefault();
 
     if (!currentUser) {
@@ -237,7 +224,7 @@ async function addSale(event) {
     } catch (error) {
         alert('حدثت مشكلة أثناء الحفظ: ' + error.message);
     }
-}
+};
 
 function updateRecentSales() {
     const container = document.getElementById('recentSalesList');
@@ -259,7 +246,7 @@ function updateRecentSales() {
             <div class="sale-item-header">
                 <span class="sale-item-type">${sale.type}</span>
                 <span class="sale-item-time">${sale.time}</span>
-                <button class="delete-btn-small" data-id="${sale.id || ''}" data-item="${sale.itemName || ''}" data-price="${sale.price || 0}" data-time="${sale.time || ''}">حذف</button>
+                <button class="delete-btn-small" onclick="deleteSale('${sale.id || ''}', '${sale.itemName || ''}', ${sale.price || 0}, '${sale.time || ''}')">حذف</button>
             </div>
             <div class="sale-item-details">
                 <div class="sale-item-detail"><span>المادة:</span><strong>${sale.itemName}</strong></div>
@@ -270,16 +257,9 @@ function updateRecentSales() {
             </div>
         </div>
     `).join('');
-
-    // ربط أزرار الحذف الديناميكية
-    container.querySelectorAll('.delete-btn-small').forEach(btn => {
-        btn.addEventListener('click', () => {
-            deleteSale(btn.dataset.id, btn.dataset.item, btn.dataset.price, btn.dataset.time);
-        });
-    });
 }
 
-async function deleteSale(id, itemName, salePrice, saleTime) {
+window.deleteSale = async function(id, itemName, salePrice, saleTime) {
     if (!confirm('هل أنت متأكد من حذف هذه العملية؟')) return;
 
     try {
@@ -314,9 +294,9 @@ async function deleteSale(id, itemName, salePrice, saleTime) {
     } catch (error) {
         alert('فشل الحذف: ' + error.message);
     }
-}
+};
 
-function applyFilters() {
+window.applyFilters = function() {
     const dateFromVal = document.getElementById('dateFrom').value;
     const dateToVal = document.getElementById('dateTo').value;
     const filterUser = document.getElementById('filterUser').value;
@@ -347,15 +327,15 @@ function applyFilters() {
     });
 
     updateReportDisplay();
-}
+};
 
-function resetFilters() {
+window.resetFilters = function() {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('dateFrom').value = today;
     document.getElementById('dateTo').value = today;
     document.getElementById('filterUser').value = '';
     applyFilters();
-}
+};
 
 function setTodayDates() {
     const today = new Date().toISOString().split('T')[0];
@@ -464,17 +444,10 @@ function updateDetailsTable() {
             <td>${formatMoney(sale.total)}${currency}</td>
             <td>${sale.notes || '-'}</td>
             <td>
-                <button class="delete-btn table-delete-btn" data-id="${sale.id || ''}" data-item="${sale.itemName || ''}" data-price="${sale.price || 0}" data-time="${sale.time || ''}">حذف</button>
+                <button class="delete-btn" onclick="deleteSale('${sale.id || ''}', '${sale.itemName || ''}', ${sale.price || 0}, '${sale.time || ''}')">حذف</button>
             </td>
         </tr>
     `).join('');
-
-    // ربط أزرار جدول التقارير برمجياً
-    tableBody.querySelectorAll('.table-delete-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            deleteSale(btn.dataset.id, btn.dataset.item, btn.dataset.price, btn.dataset.time);
-        });
-    });
 }
 
 function showSuccessMessage(message) {
@@ -499,6 +472,10 @@ function showSuccessMessage(message) {
     }, 2200);
 }
 
-function printReport() {
+window.printReport = function() {
     window.print();
-}
+};
+
+window.updateServiceType = function() {
+    // سيتم التوسعة مستقبلا
+};
