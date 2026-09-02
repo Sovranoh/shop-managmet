@@ -36,10 +36,21 @@ document.addEventListener('DOMContentLoaded', async function () {
     setTodayDates();
     await loadSales();
 
-    currentUser = null;
-    selectedUser = null;
-    localStorage.removeItem(USER_KEY);
-    showUserSelect();
+    const savedUser = localStorage.getItem(USER_KEY);
+    if (savedUser && users[savedUser]) {
+        currentUser = savedUser;
+        selectedUser = savedUser;
+        document.getElementById('currentUser').textContent = `👤 ${currentUser}`;
+        document.getElementById('userSelectScreen').classList.remove('active');
+        document.getElementById('pinScreen').classList.remove('active');
+        document.getElementById('mainScreen').classList.add('active');
+        updateRecentSales();
+        resetFilters();
+    } else {
+        currentUser = null;
+        selectedUser = null;
+        showUserSelect();
+    }
 });
 
 function showUserSelect() {
@@ -59,13 +70,11 @@ async function loadSales() {
             const firebaseSales = [];
 
             snapshot.forEach(docSnap => {
-                firebaseSales.push({ id: docSnap.id, ...docSnap.data() });
+                firebaseSales.push({ ...docSnap.data(), id: docSnap.id });
             });
 
-            if (firebaseSales.length > 0) {
-                allSales = firebaseSales;
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(allSales));
-            }
+            allSales = firebaseSales;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(allSales));
 
             console.log('✅ تم تحميل البيانات من Firebase');
         } catch (error) {
@@ -282,20 +291,19 @@ window.applyFilters = function() {
     const dateFrom = document.getElementById('dateFrom').value;
     const dateTo = document.getElementById('dateTo').value;
     const filterUser = document.getElementById('filterUser').value;
+    const fromTimestamp = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+    const toTimestamp = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
 
     filteredSales = allSales.filter(sale => {
-        let match = true;
+        const saleTimestamp = Number(sale.timestamp);
+        let match = Number.isFinite(saleTimestamp);
 
-        if (dateFrom) {
-            const fromDate = new Date(dateFrom);
-            const saleDate = parseDate(sale.date);
-            if (saleDate < fromDate) match = false;
+        if (match && fromTimestamp !== null && saleTimestamp < fromTimestamp) {
+            match = false;
         }
 
-        if (dateTo) {
-            const toDate = new Date(dateTo);
-            const saleDate = parseDate(sale.date);
-            if (saleDate > toDate) match = false;
+        if (match && toTimestamp !== null && saleTimestamp > toTimestamp) {
+            match = false;
         }
 
         if (filterUser && sale.user !== filterUser) {
