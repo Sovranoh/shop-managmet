@@ -1,8 +1,6 @@
-// 1. استيراد مكتبات Firebase بالطريقة الحديثة والاصدار المستقر
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
-// 2. إعدادات فايربيس الخاصة بمشروعك
 const firebaseConfig = {
     apiKey: "AIzaSyAjf1_jvN1e98c4c-QwUtqg3_UAxMRak3k",
     authDomain: "shop-managment-ab098.firebaseapp.com",
@@ -12,11 +10,9 @@ const firebaseConfig = {
     appId: "1:80638375251:web:5546bb963a9ff4d4dfc266"
 };
 
-// 3. تهيئة التطبيق وقاعدة البيانات وتصديرها
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
-// نظام إدارة المحل - نسخة مستقرة مع دعم Firebase + fallback محلي
 const users = {
     'عزوز': '1122334455',
     'معتز': '1122332211'
@@ -32,7 +28,6 @@ let allSales = [];
 let filteredSales = [];
 let firebaseReady = true;
 
-// دالة ذكية لتنسيق المبالغ وعرضها بشكل نظيف بدون أصفار زايدة، مع دعم البوينتات الحقيقية
 function formatMoney(amount) {
     let num = parseFloat(amount);
     if (isNaN(num)) return "0";
@@ -43,7 +38,22 @@ document.addEventListener('DOMContentLoaded', async function () {
     setTodayDates();
     await loadSales();
 
-    // التحقق هل كان المستخدم مسجل دخول سابقاً قبل الرفرش
+    // ربط الأزرار برمجياً لحل مشكلة الـ Modules
+    document.getElementById('btnAzzouz').addEventListener('click', () => selectUser('عزوز'));
+    document.getElementById('btnMotaz').addEventListener('click', () => selectUser('معتز'));
+    document.getElementById('pinForm').addEventListener('submit', verifyPin);
+    document.getElementById('backBtn').addEventListener('click', backToUserSelect);
+    document.getElementById('logoutBtn').addEventListener('click', logout);
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => switchTab(btn.dataset.tab, e));
+    });
+
+    document.getElementById('salesForm').addEventListener('submit', addSale);
+    document.getElementById('applyFilterBtn').addEventListener('click', applyFilters);
+    document.getElementById('resetFilterBtn').addEventListener('click', resetFilters);
+    document.getElementById('printBtn').addEventListener('click', printReport);
+
     const savedUser = localStorage.getItem(USER_KEY);
     if (savedUser && users[savedUser]) {
         currentUser = savedUser;
@@ -85,10 +95,8 @@ async function loadSales() {
                 allSales = firebaseSales;
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(allSales));
             }
-
-            console.log('✅ تم تحميل البيانات من Firebase');
         } catch (error) {
-            console.warn('⚠️ Firebase غير متاح، سيتم استخدام البيانات المحلية:', error.message);
+            console.warn('⚠️ استخدام التخزين المحلي:', error.message);
             allSales = fallbackSales;
         }
     }
@@ -103,7 +111,7 @@ function saveLocalSales() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(allSales));
 }
 
-window.selectUser = function(username) {
+function selectUser(username) {
     selectedUser = username;
     document.getElementById('userSelectScreen').classList.remove('active');
     document.getElementById('pinScreen').classList.add('active');
@@ -111,9 +119,9 @@ window.selectUser = function(username) {
     document.getElementById('pinInput').value = '';
     document.getElementById('pinError').textContent = '';
     setTimeout(() => document.getElementById('pinInput').focus(), 100);
-};
+}
 
-window.verifyPin = function(event) {
+function verifyPin(event) {
     event.preventDefault();
 
     const enteredPin = document.getElementById('pinInput').value;
@@ -138,17 +146,17 @@ window.verifyPin = function(event) {
         document.getElementById('pinInput').value = '';
         document.getElementById('pinInput').focus();
     }
-};
+}
 
-window.backToUserSelect = function() {
+function backToUserSelect() {
     selectedUser = null;
     document.getElementById('pinScreen').classList.remove('active');
     document.getElementById('userSelectScreen').classList.add('active');
     document.getElementById('pinInput').value = '';
     document.getElementById('pinError').textContent = '';
-};
+}
 
-window.logout = function() {
+function logout() {
     if (confirm('هل تريد تسجيل الخروج؟')) {
         currentUser = null;
         selectedUser = null;
@@ -157,14 +165,11 @@ window.logout = function() {
         document.getElementById('userSelectScreen').classList.add('active');
         document.getElementById('salesForm').reset();
     }
-};
+}
 
-window.switchTab = function(tabName, event) {
-    const tabs = document.querySelectorAll('.tab-content');
-    tabs.forEach(tab => tab.classList.remove('active'));
-
-    const buttons = document.querySelectorAll('.tab-btn');
-    buttons.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
+function switchTab(tabName, event) {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
 
     const selectedTab = document.getElementById(tabName + 'Tab');
     if (selectedTab) {
@@ -174,9 +179,9 @@ window.switchTab = function(tabName, event) {
     if (tabName === 'reports') {
         resetFilters();
     }
-};
+}
 
-window.addSale = async function(event) {
+async function addSale(event) {
     event.preventDefault();
 
     if (!currentUser) {
@@ -186,7 +191,6 @@ window.addSale = async function(event) {
 
     const saleType = document.getElementById('saleType').value;
     const itemName = document.getElementById('itemName').value.trim();
-    
     const price = parseFloat(document.getElementById('price').value);
     const quantity = parseFloat(document.getElementById('quantity').value);
     const notes = document.getElementById('notes').value.trim();
@@ -197,7 +201,6 @@ window.addSale = async function(event) {
     }
 
     const now = new Date();
-    // حفظ التاريخ بصيغة ميلادية قياسية (YYYY-MM-DD) لضمان دقة الفلترة والمقارنة
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
@@ -232,10 +235,9 @@ window.addSale = async function(event) {
         resetFilters();
         showSuccessMessage('تم حفظ العملية بنجاح ✓');
     } catch (error) {
-        console.error('خطأ في حفظ العملية:', error);
         alert('حدثت مشكلة أثناء الحفظ: ' + error.message);
     }
-};
+}
 
 function updateRecentSales() {
     const container = document.getElementById('recentSalesList');
@@ -257,51 +259,43 @@ function updateRecentSales() {
             <div class="sale-item-header">
                 <span class="sale-item-type">${sale.type}</span>
                 <span class="sale-item-time">${sale.time}</span>
-                <button class="delete-btn-small" onclick="deleteSale('${sale.id || ''}', '${sale.itemName || ''}', ${sale.price || 0}, '${sale.time || ''}')">حذف</button>
+                <button class="delete-btn-small" data-id="${sale.id || ''}" data-item="${sale.itemName || ''}" data-price="${sale.price || 0}" data-time="${sale.time || ''}">حذف</button>
             </div>
             <div class="sale-item-details">
-                <div class="sale-item-detail">
-                    <span>المادة:</span>
-                    <strong>${sale.itemName}</strong>
-                </div>
-                <div class="sale-item-detail">
-                    <span>السعر:</span>
-                    <strong>${formatMoney(sale.price)}${currency}</strong>
-                </div>
-                <div class="sale-item-detail">
-                    <span>الكمية:</span>
-                    <strong>${formatMoney(sale.quantity)}</strong>
-                </div>
-                <div class="sale-item-detail">
-                    <span>الإجمالي:</span>
-                    <strong>${formatMoney(sale.total)}${currency}</strong>
-                </div>
-                ${sale.notes ? `<div class="sale-item-detail">
-                    <span>ملاحظات:</span>
-                    <strong>${sale.notes}</strong>
-                </div>` : ''}
+                <div class="sale-item-detail"><span>المادة:</span><strong>${sale.itemName}</strong></div>
+                <div class="sale-item-detail"><span>السعر:</span><strong>${formatMoney(sale.price)}${currency}</strong></div>
+                <div class="sale-item-detail"><span>الكمية:</span><strong>${formatMoney(sale.quantity)}</strong></div>
+                <div class="sale-item-detail"><span>الإجمالي:</span><strong>${formatMoney(sale.total)}${currency}</strong></div>
+                ${sale.notes ? `<div class="sale-item-detail"><span>ملاحظات:</span><strong>${sale.notes}</strong></div>` : ''}
             </div>
         </div>
     `).join('');
+
+    // ربط أزرار الحذف الديناميكية
+    container.querySelectorAll('.delete-btn-small').forEach(btn => {
+        btn.addEventListener('click', () => {
+            deleteSale(btn.dataset.id, btn.dataset.item, btn.dataset.price, btn.dataset.time);
+        });
+    });
 }
 
-window.deleteSale = async function(id, itemName, salePrice, saleTime) {
+async function deleteSale(id, itemName, salePrice, saleTime) {
     if (!confirm('هل أنت متأكد من حذف هذه العملية؟')) return;
 
     try {
         const stringId = String(id || '').trim();
 
-        if (db && firebaseReady && stringId && !stringId.startsWith('local-') && stringId !== 'undefined' && stringId !== 'null' && stringId !== '') {
+        if (db && firebaseReady && stringId && !stringId.startsWith('local-') && stringId !== 'undefined' && stringId !== '') {
             try {
                 await deleteDoc(doc(db, 'sales', stringId));
             } catch (fbErr) {
-                console.warn("⚠️ لم يتم العثور على المستند في فايربيس:", fbErr);
+                console.warn("⚠️ لم يتم العثور على المستند في فايربيس");
             }
         }
 
         allSales = allSales.filter(sale => {
             const currentId = String(sale.id || '').trim();
-            const isIdMatch = currentId === stringId && stringId !== '' && stringId !== 'undefined' && stringId !== 'null';
+            const isIdMatch = currentId === stringId && stringId !== '';
             const isDataMatch = sale.itemName === itemName && Number(sale.price) === Number(salePrice) && sale.time === saleTime;
             return !(isIdMatch || isDataMatch);
         });
@@ -318,19 +312,18 @@ window.deleteSale = async function(id, itemName, salePrice, saleTime) {
 
         showSuccessMessage('تم حذف العملية بنجاح ✓');
     } catch (error) {
-        console.error('❌ خطأ أثناء الحذف:', error);
         alert('فشل الحذف: ' + error.message);
     }
-};
+}
 
-window.applyFilters = function() {
-    const dateFromVal = document.getElementById('dateFrom').value; // صيغة YYYY-MM-DD
-    const dateToVal = document.getElementById('dateTo').value;     // صيغة YYYY-MM-DD
+function applyFilters() {
+    const dateFromVal = document.getElementById('dateFrom').value;
+    const dateToVal = document.getElementById('dateTo').value;
     const filterUser = document.getElementById('filterUser').value;
 
     filteredSales = allSales.filter(sale => {
         let match = true;
-        const saleDateObj = parseDate(sale.date); // تحويل تاريخ العملية إلى كائن Date منتصف الليل
+        const saleDateObj = parseDate(sale.date);
 
         if (dateFromVal) {
             const fromDateObj = new Date(dateFromVal);
@@ -354,17 +347,15 @@ window.applyFilters = function() {
     });
 
     updateReportDisplay();
-};
+}
 
-window.resetFilters = function() {
+function resetFilters() {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('dateFrom').value = today;
     document.getElementById('dateTo').value = today;
     document.getElementById('filterUser').value = '';
-    
-    // تطبيق الفلتر المباشر ليجلب مبيعات اليوم فقط أو الكل حسب الرغبة (هنا يفلتر على تاريخ اليوم افتراضياً)
     applyFilters();
-};
+}
 
 function setTodayDates() {
     const today = new Date().toISOString().split('T')[0];
@@ -376,11 +367,9 @@ function setTodayDates() {
 
 function parseDate(dateString) {
     if (!dateString) return new Date();
-    // معالجة النصوص سواء كانت مخزنة بـ / أو -
     const cleanDate = dateString.replace(/-/g, '/');
     const parts = cleanDate.split('/');
     if (parts.length === 3) {
-        // دعم التنسيق YYYY/MM/DD أو DD/MM/YYYY
         if (parts[0].length === 4) {
             return new Date(parts[0], parts[1] - 1, parts[2]);
         } else {
@@ -407,7 +396,6 @@ function updateSummary() {
 
 function updateCategoryBreakdown() {
     const breakdown = {};
-
     filteredSales.forEach(sale => {
         if (!breakdown[sale.type]) {
             breakdown[sale.type] = { count: 0, total: 0 };
@@ -433,7 +421,6 @@ function updateCategoryBreakdown() {
 
 function updateUserBreakdown() {
     const breakdown = {};
-
     filteredSales.forEach(sale => {
         if (!breakdown[sale.user]) {
             breakdown[sale.user] = { count: 0, total: 0 };
@@ -459,7 +446,6 @@ function updateUserBreakdown() {
 
 function updateDetailsTable() {
     const tableBody = document.getElementById('detailsTableBody');
-
     if (!tableBody) return;
 
     if (filteredSales.length === 0) {
@@ -478,10 +464,17 @@ function updateDetailsTable() {
             <td>${formatMoney(sale.total)}${currency}</td>
             <td>${sale.notes || '-'}</td>
             <td>
-                <button class="delete-btn" onclick="deleteSale('${sale.id || ''}', '${sale.itemName || ''}', ${sale.price || 0}, '${sale.time || ''}')">حذف</button>
+                <button class="delete-btn table-delete-btn" data-id="${sale.id || ''}" data-item="${sale.itemName || ''}" data-price="${sale.price || 0}" data-time="${sale.time || ''}">حذف</button>
             </td>
         </tr>
     `).join('');
+
+    // ربط أزرار جدول التقارير برمجياً
+    tableBody.querySelectorAll('.table-delete-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            deleteSale(btn.dataset.id, btn.dataset.item, btn.dataset.price, btn.dataset.time);
+        });
+    });
 }
 
 function showSuccessMessage(message) {
@@ -506,10 +499,6 @@ function showSuccessMessage(message) {
     }, 2200);
 }
 
-window.printReport = function() {
+function printReport() {
     window.print();
-};
-
-window.updateServiceType = function() {
-    // سيتم التوسعة مستقبلا
-};
+}
